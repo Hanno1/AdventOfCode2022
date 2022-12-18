@@ -192,8 +192,4 @@ for s in range(new_simulation, simulation_steps):
         if tile_height and tile_height > current_tower_height:
             current_tower_height = tile_height
 
-# 1530232558115 too high
-# 1525364431487 -> maybe (50)
-# 1525364431487 (60)
-# 1525364431487 (100)
 print(count_height_outside + current_tower_height)
