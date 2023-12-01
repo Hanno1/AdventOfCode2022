@@ -1,160 +1,136 @@
-import copy
+import math
 
+def preprocessing(data):
+    mat = []
+    for line in data:
+        mat.append(list(line))
+    return mat
 
-def get_adjacent_elves(pos, elf_pos):
-    adjacent_tiles = [[pos[0] + i, pos[1] + j] for i in range(-1, 2) for j in range(-1, 2) if i != 0 or j != 0]
-    for tile in adjacent_tiles:
-        if tile in elf_pos:
-            return True
-    return False
-
-
-def get_adjacent_elves_direction(pos, direction, elf_pos):
-    if direction == "N":
-        adjacent_tiles = [[pos[0] - 1, pos[1] + i] for i in range(-1, 2)]
-        new_pos = [pos[0] - 1, pos[1]]
-    elif direction == "S":
-        adjacent_tiles = [[pos[0] + 1, pos[1] + i] for i in range(-1, 2)]
-        new_pos = [pos[0] + 1, pos[1]]
-    elif direction == "W":
-        adjacent_tiles = [[pos[0] + i, pos[1] - 1] for i in range(-1, 2)]
-        new_pos = [pos[0], pos[1] - 1]
-    else:
-        adjacent_tiles = [[pos[0] + i, pos[1] + 1] for i in range(-1, 2)]
-        new_pos = [pos[0], pos[1] + 1]
-    for tile in adjacent_tiles:
-        if tile in elf_pos:
-            return pos, False
-    return new_pos, True
-
-
-def get_all_new_elf_pos(elf_pos, move_order):
-    new_elf_pos = []
-    unique_pos = []
-    for position in elf_pos:
-        new_position = copy.deepcopy(position)
-        # check first condition
-        if get_adjacent_elves(position, elf_pos):
-            # move the elf
-            for direction in move_order:
-                new_position, moved_res = get_adjacent_elves_direction(copy.deepcopy(position), direction, elf_pos)
-                if moved_res:
-                    break
-        if new_position in unique_pos:
-            new_elf_pos.append(position)
-            try:
-                index = new_elf_pos.index(new_position)
-                new_elf_pos[index] = elf_pos[index]
-            except ValueError:
-                pass
-        else:
-            unique_pos.append(copy.deepcopy(new_position))
-            new_elf_pos.append(copy.deepcopy(new_position))
-    return new_elf_pos
-
-
-def move_elves_final(turns):
-    elf_pos = []
+def elves_positions(mat):
+    elves_position = []
     for row in range(len(mat)):
         for col in range(len(mat[0])):
-            if mat[row][col] == "#":
-                elf_pos.append([row, col])
-    move_order = ["N", "S", "W", "E"]
-    for i in range(turns):
-        new_elf_pos = get_all_new_elf_pos(elf_pos, move_order)
-        for old_tile in elf_pos:
-            mat[old_tile[0]][old_tile[1]] = "."
-        for new_tile in new_elf_pos:
-            mat[new_tile[0]][new_tile[1]] = "#"
-        print(f"Turns: {i}")
-        moving_elves = len(elf_pos)
-        for counter in range(len(new_elf_pos)):
-            if new_elf_pos[counter] == elf_pos[counter]:
-                moving_elves -= 1
-        print(f"Moving Elves: {moving_elves}")
-        for line in mat:
-            print(line)
-        print("----------------")
-        elf_pos = copy.deepcopy(new_elf_pos)
-        tmp = move_order.pop(0)
-        move_order.append(tmp)
+            if mat[row][col] == '#':
+                elves_position.append((row, col))
+    return elves_position
 
+def check_adjacent_tiles(row, col, elves_positions):
+    for i in range(-1, 2):
+        for j in range(-1, 2):
+            if i == 0 and j == 0:
+                continue
+            if (row + i, col + j) in elves_positions:
+                return False
+    return True
 
-def move_elves_final_2():
-    elf_pos = []
-    for row in range(len(mat)):
-        for col in range(len(mat[0])):
-            if mat[row][col] == "#":
-                elf_pos.append([row, col])
-    move_order = ["N", "S", "W", "E"]
-    turn = 1
-    while True:
-        print(f"Turn {turn}")
-        new_elf_pos = get_all_new_elf_pos(elf_pos, move_order)
-        done = True
-        for el_counter in range(len(new_elf_pos)):
-            if elf_pos[el_counter] != new_elf_pos[el_counter]:
-                done = False
+def try_moving(row, col, elves_positions, direction):
+    if direction == 'N':
+        # move north and check if empty
+        for c in range(-1, 2):
+            if (row - 1, col + c) in elves_positions:
+                return 'False', -1
+        return row - 1, col
+    elif direction == 'S':
+        # move south and check if empty
+        for c in range(-1, 2):
+            if (row + 1, col + c) in elves_positions:
+                return 'False', -1
+        return row + 1, col
+    elif direction == 'W':
+        # move west and check if empty
+        for r in range(-1, 2):
+            if (row + r, col - 1) in elves_positions:
+                return 'False', -1
+        return row, col - 1
+    elif direction == 'E':
+        # move east and check if empty
+        for r in range(-1, 2):
+            if (row + r, col + 1) in elves_positions:
+                return 'False', -1
+        return row, col + 1
+    raise ValueError('Wrong direction')
+
+def first_mvmt(elves_position, directions):
+    new_elves_position = []
+    for elve_position in elves_position:
+        r, c = elve_position
+        moved = False
+        # check 8 adjacent positions
+        # if empty -> dont do anything
+        if check_adjacent_tiles(r, c, elves_position):
+            moved = True
+            new_elves_position.append((r, c))
+            continue
+
+        # if occupied -> move in directions
+        for direction in directions:
+            r_, c_ = try_moving(r, c, elves_position, direction)
+            if r_ != 'False':
+                moved = True
+                new_elves_position.append((r_, c_))
                 break
-        if done:
-            print(turn)
+    
+        if not moved:
+            new_elves_position.append((r, c))
+            continue
+    # check if elves position is the same as a other elves position
+    counter = 0
+    for (row, col) in new_elves_position:
+        if new_elves_position.count((row, col)) > 1:
+            # move all elves back
+            duplicated_indizes = [i for i, x in enumerate(new_elves_position) if x == (row, col)]
+            for index in duplicated_indizes:
+                new_elves_position[index] = elves_position[index]
+        counter += 1
+
+    gg = True
+    for i, (row, col) in enumerate(new_elves_position):
+        orig_pos = elves_position[i]
+        if row != orig_pos[0] or col != orig_pos[1]:
+            gg = False
             break
-        elf_pos = copy.deepcopy(new_elf_pos)
-        tmp = move_order.pop(0)
-        move_order.append(tmp)
-        turn += 1
+    if gg:
+        return 'Done'
+    
+    return new_elves_position
 
+def get_first_answer():
+    positions = move(10)
+    min_row, max_row, min_col, max_col = math.inf, -math.inf, math.inf, -math.inf
+    for (row, col) in positions:
+        if row < min_row:
+            min_row = row
+        if row > max_row:
+            max_row = row
+        if col < min_col:
+            min_col = col
+        if col > max_col:
+            max_col = col
 
-def count_points():
-    top_index = 0
-    bot_index = 0
-    left_index = 0
-    right_index = 0
-    # check top
-    for row_counter in range(len(mat)):
-        line_ = mat[row_counter]
-        if line_.count("#") > 0:
-            top_index = row_counter
+    print(max_row, min_row, max_col, min_col)
+    print(len(positions))
+    print(((max_row - min_row + 1) * (max_col - min_col + 1)) - len(positions))
+
+def move(moves):
+    with open('input.txt') as f:
+        data = f.read().split('\n')
+
+    matrix = preprocessing(data)
+    directions = ['N', 'S', 'W', 'E']
+    elves_position = elves_positions(matrix)
+
+    for i in range(moves):
+        elves_position = first_mvmt(elves_position, directions)
+        print("Round", i + 1)
+        if elves_position == 'Done':
+            print('---' * 20)
+            print(f'Round {i + 1}')
+            print('Done')
             break
-    # check bot
-    for row_counter in range(len(mat) - 1, 0, -1):
-        line_ = mat[row_counter]
-        if line_.count("#") > 0:
-            bot_index = row_counter
-            break
-    # check left
-    for col_counter in range(len(mat[0])):
-        current_col = [mat[i][col_counter] for i in range(len(mat))]
-        if current_col.count("#") > 0:
-            left_index = col_counter
-            break
-    # check right
-    for col_counter in range(len(mat[0]) - 1, 0, -1):
-        current_col = [mat[i][col_counter] for i in range(len(mat))]
-        if current_col.count("#") > 0:
-            right_index = col_counter
-            break
-    new_mat = [mat[i][left_index:right_index + 1] for i in range(top_index, bot_index + 1)]
-    return new_mat
+        # change directions
+        tmp = directions.pop(0)
+        directions.append(tmp)
+    return elves_position
 
-
-padding = 0
-mat = []
-with open("input.txt") as file:
-    for line in file:
-        mat.append([c for c in line.replace("\n", "")])
-
-length = len(mat[0])
-for line in mat:
-    for _ in range(padding):
-        line.insert(0, ".")
-        line.append(".")
-for _ in range(padding):
-    mat.insert(0, ["." for _ in range(length + 2 * padding)])
-for _ in range(padding):
-    mat.append(["." for _ in range(length + 2 * padding)])
-
-# false 929 - too low
-# 930 - too low
-move_elves_final_2()
-# move_elves_final(20)
+move(1200)
+# get_first_answer()
